@@ -33,6 +33,18 @@ class CouchbaseSelector:
     else:
       return self.cb.get(key).value
 
+  def get_count(self, selector={}):
+    count = 0
+    for rec in self.select(['id'], selector):
+      count +=1
+    return count
+
+  def get_parameter_count(self, name, selector={}):
+    count = 0
+    for rec in self.get_parameter(name,['id'], selector):
+      count +=1
+    return count
+
   def select(self, fields=[], selector={}, sort=[]):
     if self.debug:
       print "select: fields: "+str(fields)
@@ -55,11 +67,11 @@ class CouchbaseSelector:
 
   # -- Get Parameter
 
-  def getParameter(self, name, fields=[], selector={}, sort=[]):
+  def get_parameter(self, name, fields=[], selector={}, sort=[]):
     selector['parameter'] = name
     return self.select(fields, selector, sort)
 
-  # -- Helper function: G
+  # -- Helper functions
 
   def _get_fields(self, fields):
     if fields is None or len(fields) < 1:
