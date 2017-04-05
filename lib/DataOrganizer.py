@@ -33,24 +33,31 @@ class CouchbaseSelector:
     else:
       return self.cb.get(key).value
 
-  def select(self, fields, where):
+  def select(self, fields=[], selector={}, sort=[]):
     if self.debug:
       print "select: fields: "+str(fields)
-      print "select: where: "+str(where)
+      print "select: selector: "+str(selector)
 
     if self.cb is None:
       raise IOError("Database not opened")
 
     fields_str = self._get_fields(fields)
-    where_str  = self._get_where(where)
+    where_str  = self._get_where(selector)
+    sort_str   = self._get_sort(sort)
 
-    sql = 'select '+fields_str+' from `'+self.bucket+'` '+where_str
+    sql = 'select '+fields_str+' from `'+self.bucket+'` '+where_str+' '+sort_str
 
     if self.debug:
       print "select: sql: "+sql
 
     query = N1QLQuery(sql)
     return self.cb.n1ql_query(query)
+
+  # -- Get Parameter
+
+  def getParameter(self, name, fields=[], selector={}, sort=[]):
+    selector['parameter'] = name
+    return self.select(fields, selector, sort)
 
   # -- Helper function: G
 
@@ -100,4 +107,7 @@ class CouchbaseSelector:
     else:
        operand = str(operand)
     return operator+' '+operand
+
+  def _get_sort(self, sort): # TODO
+    return ''
 
