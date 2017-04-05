@@ -16,7 +16,7 @@ class CouchbaseSelector:
 
   debug = False
 
-  def open(self, server, bucket):
+  def __init__(self, server, bucket):
     self.bucket = bucket
     self.url = 'couchbase://'+server+'/'+bucket
     self.cb = Bucket(self.url)
