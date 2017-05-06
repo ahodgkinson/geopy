@@ -13,6 +13,9 @@ import re
 import csv
 import json
 
+from time import gmtime, strftime
+from random import randint
+
 
 """
     See: http://stackoverflow.com/questions/1857780/sparse-assignment-list-in-python
@@ -28,6 +31,32 @@ class SparseList(list):
         try: return list.__getitem__(self, index)
         except IndexError: return None
 
+
+"""
+   Static method IdField.new('table_name')
+
+   Return ID of the form 'table-YYYYMMDD-hhmmss-rrrrrrrr'
+
+   Where 'rrrrrrrr' is a rendom 8-digit string
+"""
+
+class IdField:
+
+    @staticmethod
+    def new(table_name):
+        return "-".join( ( table_name, IdField._timestamp(), IdField._randint(8) ) )
+
+    @staticmethod
+    def _timestamp(): # Return 'YYMMDD-hhmmss' timestamp
+        return strftime("%Y%m%d-%H%M%S", gmtime())
+
+    @staticmethod
+    def _randint(size): # return 'size'-digit random number
+        r = ''
+        for i in range(0, size):
+            r = r + str(randint(0,9))
+        return r
+
 """
     CSV Data file reader
 """
@@ -35,11 +64,13 @@ class SparseList(list):
 class CsvDataReader:
 
     file_name = None
+    table_name = None
     header = None
     data = None
     
-    def __init__(self, file_name):
+    def __init__(self, table_name, file_name):
         self.file_name = file_name 
+        self.table_name = table_name 
 
     def read(self):
         self.data = []
@@ -60,29 +91,22 @@ class CsvDataReader:
                 (field_name_base, ignore, offset, ignore, sub_field_name) = parts
                 record = self._add_sub_field(record, field_name_base, int(offset), sub_field_name, row[i])
             i = i + 1
+
+        if not 'id' in record:
+            record['id'] = IdField.new(self.table_name)
+
         data.append(record)
         return data
 
     def _add_sub_field(self, record, field_name, offset, sub_field_name, value):
-        #print "---------------------"
-        #print "_add_sub_field: START"
-        #print "---------------------"
-        #print "  field_name: "+field_name 
-        #print "  offset : "+str(offset)
-        #print "  sub_field_name : "+sub_field_name 
-        #print "  value: "+value
-        #print "  record: "+json.dumps(record,indent=2)
-
         if not field_name in record:
-            #print " --> Adding SparseList.."
             record[field_name] = SparseList()
             record[field_name][offset] = {}
 
         if record[field_name][offset] is None:
-            #print " --> Adding Dictionary.."
             record[field_name][offset] = {}
 
-        #print "  record "+json.dumps(record,indent=2)
         record[field_name][offset][sub_field_name] = value
         return record
+
 
