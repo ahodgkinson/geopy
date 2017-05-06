@@ -16,7 +16,7 @@ class CouchbaseSelector:
 
   debug = False
 
-  def open(self, server, bucket):
+  def __init__(self, server, bucket):
     self.bucket = bucket
     self.url = 'couchbase://'+server+'/'+bucket
     self.cb = Bucket(self.url)
@@ -33,18 +33,31 @@ class CouchbaseSelector:
     else:
       return self.cb.get(key).value
 
-  def select(self, fields, where):
+  def get_count(self, selector={}):
+    count = 0
+    for rec in self.select(['id'], selector):
+      count +=1
+    return count
+
+  def get_parameter_count(self, name, selector={}):
+    count = 0
+    for rec in self.get_parameter(name,['id'], selector):
+      count +=1
+    return count
+
+  def select(self, fields=[], selector={}, sort=[]):
     if self.debug:
       print "select: fields: "+str(fields)
-      print "select: where: "+str(where)
+      print "select: selector: "+str(selector)
 
     if self.cb is None:
       raise IOError("Database not opened")
 
     fields_str = self._get_fields(fields)
-    where_str  = self._get_where(where)
+    where_str  = self._get_where(selector)
+    sort_str   = self._get_sort(sort)
 
-    sql = 'select '+fields_str+' from `'+self.bucket+'` '+where_str
+    sql = 'select '+fields_str+' from `'+self.bucket+'` '+where_str+' '+sort_str
 
     if self.debug:
       print "select: sql: "+sql
@@ -52,7 +65,13 @@ class CouchbaseSelector:
     query = N1QLQuery(sql)
     return self.cb.n1ql_query(query)
 
-  # -- Helper function: G
+  # -- Get Parameter
+
+  def get_parameter(self, name, fields=[], selector={}, sort=[]):
+    selector['parameter'] = name
+    return self.select(fields, selector, sort)
+
+  # -- Helper functions
 
   def _get_fields(self, fields):
     if fields is None or len(fields) < 1:
@@ -100,4 +119,7 @@ class CouchbaseSelector:
     else:
        operand = str(operand)
     return operator+' '+operand
+
+  def _get_sort(self, sort): # TODO
+    return ''
 
