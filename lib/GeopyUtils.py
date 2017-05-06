@@ -95,6 +95,9 @@ class CsvDataReader:
         if not 'id' in record:
             record['id'] = IdField.new(self.table_name)
 
+        if not 'type' in record:
+            record['type'] = self.table_name
+
         data.append(record)
         return data
 
