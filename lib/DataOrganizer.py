@@ -3,6 +3,7 @@
 
 """
 
+import re
 import json
 
 from couchbase.bucket import Bucket
@@ -23,7 +24,7 @@ class CouchbaseSelector:
 
   def setDebug(self, debug):
     self.debug = debug
-    
+
   def get(self, key):
     if self.debug:
       print "get: key: "+key
@@ -39,9 +40,9 @@ class CouchbaseSelector:
       count +=1
     return count
 
-  def get_parameter_count(self, name, selector={}):
+  def get_parameter_count(self, name, selector={}, sort=[]):
     count = 0
-    for rec in self.get_parameter(name,['id'], selector):
+    for rec in self.get_parameter(name,['id'], selector, sort):
       count +=1
     return count
 
@@ -82,44 +83,72 @@ class CouchbaseSelector:
   def _get_where(self, where):
     if where is None or len(where) < 1:
       return ''
-  
+
     if not isinstance(where, dict):
       raise TypeError("invalid where clause: "+str(where))
-  
+
     where_parts = []
     for field in where.keys():
       where_parts.append(self._get_where_part(field, where.get(field)))
     return "where "+" and ".join(where_parts)
-  
+
   def _get_where_part(self, field, rhs): # Returns "field operator operand", e.g `a` = 27
     return '`'+field+'` '+self._get_where_rhs(rhs)
-  
-  def _get_where_rhs(self, rhs):	# Return right-hand-side of where clause expression, 
+
+  def _get_where_rhs(self, rhs):	# Return right-hand-side of where clause expression,
     if isinstance(rhs, int) or isinstance(rhs,float): # A number
       return "= "+str(rhs)
     if isinstance(rhs, str): # A string, quote (& escape) the string
       return "= "+json.dumps(rhs)
-  
+
     if not isinstance(rhs, dict) or len(rhs) != 1: # Expecting a 1-item dict
       raise ValueError("Invalid sub-clause: "+str(rhs))
-  
+
     operators = { # Key is 'op_code', Value is 'operator'
       '$eq': '=', '$ne': '!=', '$gt': '>', '$gte': '>=', '$le': '<', '$lte': '<='
     }
-  
+
     op_code = rhs.keys()[0]
     operand = rhs.get(op_code)
     operator = operators.get(op_code)
-  
+
     if operator is None: raise ValueError("Invalid operator: "+str(rhs))
     if operand is None: raise ValueError("Invalid operand: "+str(rhs))
-  
+
     if isinstance(operand, str):
        operand = json.dumps(operand)
     else:
        operand = str(operand)
     return operator+' '+operand
 
-  def _get_sort(self, sort): # TODO
-    return ''
+  def _get_sort(self, sort):
+    if sort is None or len(sort) < 1:
+      return ''
+
+    if sort is str: # 'field' or 'field asc' or 'field desc'
+      return self._get_sort_field(sort)
+
+    if type(sort) is not list:
+      raise ValueError("Invalid sort: expected list");
+
+    sort_parts = []
+
+    for sort_field in sort:
+      sort_parts.append(self._get_sort_field(sort_field))
+
+    return 'order by '+', '.join(sort_parts)
+
+  def _get_sort_field(self, sort_field):
+    parts = re.split(r'\s+',sort_field)
+
+    if len(parts) > 2:
+      raise ValueError("Invalid sort field: "+sort_field)
+
+    if len(parts) == 1:
+      return '`'+sort_field+'`'
+
+    if parts[1] != 'asc' and parts[1] != 'desc':
+      raise ValueError("Invalid sort direction (expected asc or desc): "+parts[1])
+
+    return '`'+parts[0]+'` '+parts[1]
 
